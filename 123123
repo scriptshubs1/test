@@ -53,12 +53,36 @@ local data = {
 }
 
 
-request({
-    Url = webhook,
-    Method = "POST",
-    Headers = {["Content-Type"] = "application/json"},
-    Body = HttpService:JSONEncode(data)
-})
+-- Добавьте таймаут для избежания зависаний
+local function SendWebhookRequest(embedData, timeout)
+    timeout = timeout or 10 -- секунды по умолчанию
+    
+    local headers = {
+        ["Content-Type"] = "application/json"
+    }
+
+    local data = {
+        ["embeds"] = {embedData}
+    }
+
+    local success, response = pcall(function()
+        local body = HttpService:JSONEncode(data)
+        
+        if request then
+            return request({
+                Url = webhook,
+                Method = "POST",
+                Headers = headers,
+                Body = body
+            })
+        else
+            -- Для HttpService добавим таймаут
+            return HttpService:PostAsync(webhook, body, Enum.HttpContentType.ApplicationJson, false, timeout)
+        end
+    end)
+    
+    return success, response
+end
 
 
 
